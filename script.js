@@ -22,7 +22,7 @@ class Snake {
   constructor() {
     this.snakeBody = [{ x: 10, y: 10 }];
     this.direction = 'right';
-    this.grow = false;
+    this.asHeaten = false;
   }
 
   drawSnake() {
@@ -52,12 +52,12 @@ class Snake {
     }
     this.snakeBody.unshift(snakeHead);
 
-    if (!this.grow) {
-      // le serpent grow uniquement si il mange de la nourriture.
-      // Voir condition dans la classe "game"
+    if (!this.asHeaten) {
+      // le serpent grandit uniquement si il mange de la nourriture.
+      // Voir condition dans la classe "game" donc on enleve la queue s'il n'a pas mangé
       this.snakeBody.pop(); //enleve la queue du serpent
     } else {
-      this.grow = false;
+      this.asHeaten = false;
     }
   }
 }
@@ -100,12 +100,18 @@ class Game {
     startBtn.style.display = 'none';
     logo.style.display = 'none';
 
+    this.gameLoop();
+  }
+
+  gameLoop() {
+    clearInterval(this.gameInterval); //reinitialise l'interval
+
     this.gameInterval = setInterval(() => {
       this.snake.move();
       this.eatFood();
       if (this.snake.grow) {
         this.increaseSpeed();
-      }
+      } // increaseSpeed se declenche que si le serpent a mangé( voir dans eatFood)
       this.render();
       this.checkCollision();
     }, this.gameSpeedDelay);
@@ -117,7 +123,7 @@ class Game {
       nextSnakeHead.x === this.food.position.x &&
       nextSnakeHead.y === this.food.position.y
     ) {
-      this.snake.grow = true;
+      this.snake.asHeaten = true;
       this.food = new Food();
     }
   }
@@ -168,25 +174,26 @@ class Game {
     }
   }
 
-updateScore() {
+  updateScore() {
     const currentScore = this.snake.snakeBody.length - 1;
     score.textContent = currentScore.toString().padStart(3, '0');
   }
+
+  reset() {
+    this.snake = new Snake();
+    this.food = new Food();
+    this.gameSpeedDelay = 200;
+    this.gameStarted = false;
+    board.innerHTML = '';
+  }
+
   gameOver() {
     clearInterval(this.gameInterval);
     startBtn.style.display = 'block';
     logo.style.display = 'block';
 
-    this.updateScore()
-    this.gameStarted = false;
-    this.snake = new Snake();
-    this.food = new Food();
-    this.render();
-
-
-  
-   
-  
+    this.updateScore();
+    this.reset();
   }
 
   increaseSpeed() {
@@ -198,9 +205,7 @@ updateScore() {
       this.gameSpeedDelay -= 5;
     }
 
-    clearInterval(this.gameInterval);
-
-    this.start();
+    this.gameLoop();
   }
 }
 
