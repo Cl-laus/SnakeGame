@@ -17,11 +17,12 @@ function setPosition(element, position) {
   element.style.gridRow = position.y;
 }
 
+////////////////////SNAKE///////////////////////
 class Snake {
   constructor() {
     this.snakeBody = [{ x: 10, y: 10 }];
     this.direction = 'right';
-    this.controlSnake();
+    this.grow = false;
   }
 
   drawSnake() {
@@ -32,20 +33,7 @@ class Snake {
       board.appendChild(snakeEl);
     });
   }
-  controlSnake() {
-    document.addEventListener('keydown', (event) => {
-     
-      if (event.key === 'ArrowRight' && this.direction !== 'left') {
-        this.direction = 'right';
-      } else if (event.key === 'ArrowLeft' && this.direction !== 'right') {
-        this.direction = 'left';
-      } else if (event.key === 'ArrowUp' && this.direction !== 'down') {
-        this.direction = 'up';
-      } else if (event.key === 'ArrowDown' && this.direction !== 'up') {
-        this.direction = 'down';
-      }
-    });
-  }
+
   move() {
     const snakeHead = { ...this.snakeBody[0] };
     switch (this.direction) {
@@ -64,13 +52,17 @@ class Snake {
     }
     this.snakeBody.unshift(snakeHead);
 
-    if (snakeHead.x === food.position.x && snakeHead.y === food.position.y) {
-      food = new Food();
-    } else {
+    if (!this.grow) {
+      // le serpent grow uniquement si il mange de la nourriture.
+      // Voir condition dans la classe "game"
       this.snakeBody.pop(); //enleve la queue du serpent
+    } else {
+      this.grow = false;
     }
   }
 }
+
+////////////////////FOOD///////////////////////
 
 class Food {
   constructor() {
@@ -91,28 +83,128 @@ class Food {
   }
 }
 
+////////////////////GAME///////////////////////
+
+class Game {
+  constructor() {
+    this.gameInterval;
+    this.gameSpeedDelay = 200;
+    this.gameStarted = false;
+    this.snake = new Snake();
+    this.controllerSnake();
+    this.food = new Food();
+  }
+
+  start() {
+    this.gameStarted = true;
+    startBtn.style.display = 'none';
+    logo.style.display = 'none';
+
+    this.gameInterval = setInterval(() => {
+      this.snake.move();
+      this.eatFood();
+      if (this.snake.grow) {
+        this.increaseSpeed();
+      }
+      this.render();
+      this.checkCollision();
+    }, this.gameSpeedDelay);
+  }
+
+  eatFood() {
+    const nextSnakeHead = this.snake.snakeBody[0];
+    if (
+      nextSnakeHead.x === this.food.position.x &&
+      nextSnakeHead.y === this.food.position.y
+    ) {
+      this.snake.grow = true;
+      this.food = new Food();
+    }
+  }
+
+  render() {
+    board.innerHTML = '';
+    this.snake.drawSnake();
+    this.food.drawFood();
+  }
+
+  controllerSnake() {
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowRight' && this.snake.direction !== 'left') {
+        this.snake.direction = 'right';
+      } else if (
+        event.key === 'ArrowLeft' &&
+        this.snake.direction !== 'right'
+      ) {
+        this.snake.direction = 'left';
+      } else if (event.key === 'ArrowUp' && this.snake.direction !== 'down') {
+        this.snake.direction = 'up';
+      } else if (event.key === 'ArrowDown' && this.snake.direction !== 'up') {
+        this.snake.direction = 'down';
+      }
+    });
+  }
+
+  checkCollision() {
+    const snakeHead = this.snake.snakeBody[0];
+
+    //collision entre la tete et le mur
+    if (
+      snakeHead.x < 1 ||
+      snakeHead.x > 20 ||
+      snakeHead.y < 1 ||
+      snakeHead.y > 20
+    ) {
+      this.gameOver();
+    }
+    //collision entre la tete et le corps du serpent
+    for (let i = 1; i < this.snake.snakeBody.length; i++) {
+      if (
+        snakeHead.x === this.snake.snakeBody[i].x &&
+        snakeHead.y === this.snake.snakeBody[i].y
+      ) {
+        this.gameOver();
+      }
+    }
+  }
+
+updateScore() {
+    const currentScore = this.snake.snakeBody.length - 1;
+    score.textContent = currentScore.toString().padStart(3, '0');
+  }
+  gameOver() {
+    clearInterval(this.gameInterval);
+    startBtn.style.display = 'block';
+    logo.style.display = 'block';
+
+    this.updateScore()
+    this.gameStarted = false;
+    this.snake = new Snake();
+    this.food = new Food();
+    this.render();
+
+
+  
+   
+  
+  }
+
+  increaseSpeed() {
+    if (this.gameSpeedDelay > 150) {
+      this.gameSpeedDelay -= 15;
+    } else if (this.gameSpeedDelay > 100) {
+      this.gameSpeedDelay -= 10;
+    } else if (this.gameSpeedDelay > 50) {
+      this.gameSpeedDelay -= 5;
+    }
+
+    clearInterval(this.gameInterval);
+
+    this.start();
+  }
+}
+
 //initialisation
-let gameInterval;
-let gameSpeedDelay = 200;
-let gameStarted = false;
 
-snake = new Snake();
-food = new Food();
-
-function draw() {
-  board.innerHTML = '';
-  snake.drawSnake();
-  food.drawFood();
-}
-function startGame() {
-  gameStarted = true;
-  startBtn.style.display = 'none';
-  logo.style.display = 'none';
-
-  gameInterval = setInterval(() => {
-    snake.move();
-    draw();
-  }, gameSpeedDelay);
-}
-
-startBtn.addEventListener('click', startGame);
+game = new Game();
+startBtn.addEventListener('click', game.start.bind(game));
